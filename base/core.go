@@ -19,13 +19,16 @@ func (b *base) BotHandler() {
 func (b *base) DMCreated(p *payload.DirectMessageCreated) {
 
 	// 会計でない人からのDMの場合無視
-	if b.OnGroupExists(p.Message.User.ID, "ba6552f8-cd46-4123-803b-89440da06860") {
+	if !b.OnGroupExists(p.Message.User.ID, "ba6552f8-cd46-4123-803b-89440da06860") {
 		log.Println("会計じゃないのはダメ!!")
+		b.BotDM(p.Message.User.ID, "BOT利用権限がありません")
+		return
 	}
 
 	// ""を無視した空白くぎり
+	quoted := false
 	sep := strings.FieldsFunc(p.Message.Text, func(r rune) bool {
-		quoted := false
+
 		if r == '"' {
 			quoted = !quoted
 		}
@@ -38,9 +41,13 @@ func (b *base) DMCreated(p *payload.DirectMessageCreated) {
 	sendlist := strings.FieldsFunc(sep[1], func(r rune) bool { return r == ',' })
 	// 全員が存在するIDでなければDM送信しない
 	sendUUID := b.BotGetUsersUUID(sendlist)
+	if sep[2] != "/message" {
+		return
+	}
 
 	for _, u := range sendUUID {
-
+		send := strings.Trim(sep[3], "\"")
+		b.BotDM(u, send)
 	}
 
 	log.Println(sep)      // Foo, bar, random, "letters lol", stuff
