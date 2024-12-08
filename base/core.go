@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/traPtitech/go-traq"
 	"github.com/traPtitech/traq-ws-bot/payload"
 )
 
@@ -16,14 +17,15 @@ func (b *base) BotHandler() {
 }
 
 func (b *base) DMCreated(p *payload.DirectMessageCreated) {
-	quoted := false
+
+	// 会計でない人からのDMの場合無視
 	if b.OnGroupExists(p.Message.User.ID, "ba6552f8-cd46-4123-803b-89440da06860") {
 		log.Println("会計じゃないのはダメ!!")
 	}
-	// 会計でない人からのDMの場合無視
-	// if(b.bot.API().GroupApi)
-	// if there are quotation,ignore space
+
+	// ""を無視した空白くぎり
 	sep := strings.FieldsFunc(p.Message.Text, func(r rune) bool {
+		quoted := false
 		if r == '"' {
 			quoted = !quoted
 		}
@@ -35,6 +37,11 @@ func (b *base) DMCreated(p *payload.DirectMessageCreated) {
 	}
 	sendlist := strings.FieldsFunc(sep[1], func(r rune) bool { return r == ',' })
 	// 全員が存在するIDでなければDM送信しない
+	sendUUID := b.BotGetUsersUUID(sendlist)
+
+	for _, u := range sendUUID {
+
+	}
 
 	log.Println(sep)      // Foo, bar, random, "letters lol", stuff
 	log.Println(sendlist) // Foo, bar, random, "letters lol", stuff
@@ -48,4 +55,43 @@ func (b *base) OnGroupExists(userID string, groupID string) bool {
 		}
 	}
 	return false
+}
+
+func (b *base) BotGetUsersUUID(userNames []string) (useruuids []string) {
+	res := []string{}
+	users, httpres, err := b.bot.API().UserApi.GetUsers(context.Background()).Execute()
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		log.Printf("Full HTTP response: %v\n", httpres)
+	}
+	// 探索高速化のための全ユーザーmap登録
+	userNamemap := map[string]traq.User{}
+	for _, u := range users {
+		userNamemap[u.Name] = u
+	}
+
+	for _, s := range userNames {
+		if val, ok := userNamemap[s]; !ok {
+			log.Fatal("Not found such user")
+			return []string{}
+		} else {
+			res = append(res, val.Id)
+		}
+	}
+	log.Print(res)
+	return res
+
+}
+
+func (b *base) BotDM(userid string, content string) {
+	_, r, err := b.bot.API().
+		MessageApi.
+		PostDirectMessage(context.Background(), userid).
+		PostMessageRequest(traq.PostMessageRequest{
+			Content: content,
+		}).Execute()
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		log.Printf("Full HTTP response: %v\n", r)
+	}
 }
