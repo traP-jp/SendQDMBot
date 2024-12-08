@@ -45,10 +45,17 @@ func (b *base) DMCreated(p *payload.DirectMessageCreated) {
 		return
 	}
 
+	if len(sendUUID) == 0 {
+		b.BotDM(p.Message.User.ID, "送信対象にエラーがあります")
+		return
+	}
+
 	for _, u := range sendUUID {
 		send := strings.Trim(sep[3], "\"")
 		b.BotDM(u, send)
 	}
+
+	b.BotDM(p.Message.User.ID, "送信完了")
 
 	log.Println(sep)      // Foo, bar, random, "letters lol", stuff
 	log.Println(sendlist) // Foo, bar, random, "letters lol", stuff
@@ -79,7 +86,7 @@ func (b *base) BotGetUsersUUID(userNames []string) (useruuids []string) {
 
 	for _, s := range userNames {
 		if val, ok := userNamemap[s]; !ok {
-			log.Fatal("Not found such user")
+			log.Print("Not found such user")
 			return []string{}
 		} else {
 			res = append(res, val.Id)
